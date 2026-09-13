@@ -82,6 +82,12 @@ def main() -> int:
         )
         if status != 200:
             failures.append(f"register:{service_id}")
+        status, body = emit(
+            f"reactivate:{service_id}",
+            admin("POST", f"/admin/reactivate/{service_id}"),
+        )
+        if status != 200:
+            failures.append(f"reactivate:{service_id}")
 
     ping = {
         "target_id": TARGET_ID,
