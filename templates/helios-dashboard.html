@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UNG-HELIOS Operations Dashboard</title>
+  <link rel="stylesheet" href="/static/helios-dashboard.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar">
+      <div>
+        <div class="eyebrow">UGANDA NATIONAL GRID · SYSTEM RELAY</div>
+        <h1>UNG-HELIOS</h1>
+        <p>Operations Dashboard</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="live-chip"><span class="pulse"></span><span id="live-status">Connecting</span></div>
+        <div class="clock" id="clock">--:--:--</div>
+      </div>
+    </header>
+
+    <div class="banner" id="global-banner" role="status" aria-live="polite"></div>
+
+    <main>
+      <section class="hero-grid">
+        <article class="panel topology-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Network</span>
+              <h2>HELIOS Relay Topology</h2>
+            </div>
+            <span class="muted" id="last-refresh">Waiting for telemetry…</span>
+          </div>
+          <div class="topology" id="topology">
+            <div class="hub-ring hub-ring-outer"></div>
+            <div class="hub-ring hub-ring-inner"></div>
+            <div class="hub-core">
+              <span class="sun-mark">☀</span>
+              <strong>HELIOS</strong>
+              <small>Message Relay Hub</small>
+            </div>
+            <div class="service-orbit" id="service-orbit"></div>
+          </div>
+        </article>
+
+        <aside class="summary-stack" id="health-summary">
+          <article class="metric-card primary">
+            <span class="metric-label">System Health</span>
+            <strong class="metric-value" id="health-state">—</strong>
+            <span class="metric-foot" id="health-foot">Awaiting response</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Active Systems</span>
+            <strong class="metric-value" id="active-count">0</strong>
+            <span class="metric-foot">Registered relay endpoints</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Recent Deliveries</span>
+            <strong class="metric-value" id="delivery-count">0</strong>
+            <span class="metric-foot" id="delivery-foot">No recent traffic</span>
+          </article>
+          <article class="metric-card danger-soft">
+            <span class="metric-label">Security Events</span>
+            <strong class="metric-value" id="security-count">0</strong>
+            <span class="metric-foot" id="security-foot">No recent alerts</span>
+          </article>
+        </aside>
+      </section>
+
+      <section class="panel" id="systems-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-kicker">Connected Systems</span>
+            <h2>Service Registry</h2>
+          </div>
+          <input class="filter" id="system-filter" type="search" placeholder="Search system or capability" aria-label="Search systems">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>System</th><th>Service ID</th><th>Capabilities</th><th>Status</th></tr></thead>
+            <tbody id="systems-body"><tr><td colspan="4" class="empty">Waiting for HELIOS…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="two-column-grid">
+        <article class="panel" id="deliveries-panel">
+          <div class="panel-heading">
+            <div><span class="section-kicker">Traffic</span><h2>Message Flow</h2></div>
+            <input class="filter compact" id="delivery-filter" type="search" placeholder="Filter sender / target" aria-label="Filter deliveries">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Route</th><th>Type</th><th>Attempts</th><th>Result</th></tr></thead>
+              <tbody id="deliveries-body"><tr><td colspan="5" class="empty">No delivery records yet</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel security-panel" id="security-panel">
+          <div class="panel-heading">
+            <div><span class="section-kicker">Security</span><h2>Security Events</h2></div>
+            <span class="shield">◈</span>
+          </div>
+          <div id="security-list" class="event-list">
+            <div class="empty-card">No security events recorded</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel admin-panel" id="admin-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-kicker">Administration</span>
+            <h2>Operator Controls</h2>
+          </div>
+          <span class="status-badge neutral">Protected</span>
+        </div>
+        <div class="admin-message">
+          <div class="admin-icon">⌁</div>
+          <div>
+            <strong>Administrative actions remain protected by HELIOS security.</strong>
+            <p>This first dashboard release is live-monitoring only. Registration, deactivate/reactivate, and unlock controls remain on the authenticated admin API until the staff-session gate is added.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>UNG-HELIOS · Detection-aware secure message relay</span>
+      <span>Dashboard v1</span>
+    </footer>
+  </div>
+  <script src="/static/helios-dashboard.js" defer></script>
+</body>
+</html>
