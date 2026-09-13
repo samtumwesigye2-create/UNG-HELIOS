@@ -36,14 +36,28 @@ def admin(method: str, path: str, body: dict | None = None) -> tuple[int, str]:
     return request(method, path, body=body, headers={"X-Admin-Key": ADMIN})
 
 
+def wait_for_health(attempts: int = 12, delay: float = 2.0) -> bool:
+    for _ in range(attempts):
+        status, body = request("GET", "/health")
+        if status == 200 and '"status":"ok"' in body.replace(" ", ""):
+            return True
+        time.sleep(delay)
+    return False
+
+
 def register(service_id: str, key: str) -> tuple[int, str]:
-    return admin("POST", "/admin/register", {
+    status, body = admin("POST", "/admin/register", {
         "service_id": service_id,
         "name": service_id,
         "capabilities": ["security-acceptance"],
         "endpoint": "https://httpbin.org/post",
         "auth_key": key,
     })
+    if status == 200:
+        reactivate_status, reactivate_body = admin("POST", f"/admin/reactivate/{service_id}")
+        if reactivate_status != 200:
+            return reactivate_status, reactivate_body
+    return status, body
 
 
 def signed_broadcast(service_id: str, key: str, capability: str = "no-live-targets") -> tuple[int, str]:
@@ -64,6 +78,13 @@ def bad_signature_broadcast(service_id: str) -> tuple[int, str]:
 
 def main() -> int:
     failures: list[str] = []
+
+    if not wait_for_health():
+        print("health_ready: False")
+        print("security_acceptance_result: FAIL")
+        print("failed_checks: health")
+        return 1
+    print("health_ready: True")
 
     # 1) Failed-auth lockout.
     lock_id = "helios-lockout-sender"
