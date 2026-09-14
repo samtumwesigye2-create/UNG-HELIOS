@@ -193,3 +193,8 @@ async def broadcast_message(sender_id: str, request: Request):
 @app.get("/health")
 def health():
     return {"status": "ok", "active_services": len(registry.all_active())}
+
+# Railway currently launches api:app. Importing dashboard here registers the
+# existing UI/static routes on the same FastAPI instance without changing any
+# relay, authentication, or security behavior.
+import dashboard as _dashboard  # noqa: E402,F401
