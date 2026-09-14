@@ -5,6 +5,7 @@ Prints no secret values.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import hmac
 import json
@@ -76,6 +77,17 @@ def bad_signature_broadcast(service_id: str) -> tuple[int, str]:
                    headers={"X-Timestamp": str(time.time()), "X-Signature": "0" * 64})
 
 
+def burst_broadcasts(service_id: str, key: str, *, count: int = 40,
+                     workers: int = 20) -> list[tuple[int, str]]:
+    """Send a bounded concurrent burst to exercise the live anomaly detector."""
+    results: list[tuple[int, str]] = []
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = [pool.submit(signed_broadcast, service_id, key) for _ in range(count)]
+        for future in as_completed(futures):
+            results.append(future.result())
+    return results
+
+
 def main() -> int:
     failures: list[str] = []
 
@@ -86,8 +98,10 @@ def main() -> int:
         return 1
     print("health_ready: True")
 
+    run_suffix = str(int(time.time()))
+
     # 1) Failed-auth lockout.
-    lock_id = "helios-lockout-sender"
+    lock_id = f"helios-lockout-{run_suffix}"
     lock_key = BASE_KEY + "-lock"
     status, _ = register(lock_id, lock_key)
     print(f"lockout_register: HTTP {status}")
@@ -106,7 +120,7 @@ def main() -> int:
     admin("POST", f"/admin/deactivate/{lock_id}")
 
     # 2) Per-service rate limiting: 120 allowed in a 60s window, 121st rejected.
-    rate_id = "helios-rate-sender"
+    rate_id = f"helios-rate-{run_suffix}"
     rate_key = BASE_KEY + "-rate"
     status, _ = register(rate_id, rate_key)
     print(f"rate_register: HTTP {status}")
@@ -124,36 +138,41 @@ def main() -> int:
         failures.append("rate_limit")
     admin("POST", f"/admin/deactivate/{rate_id}")
 
-    # 3) Anomaly auto-quarantine. Establish a low baseline for ~60s, then burst.
-    anomaly_id = "helios-anomaly-sender"
+    # 3) Anomaly auto-quarantine. Establish a low baseline for ~60s, then burst concurrently.
+    anomaly_id = f"helios-anomaly-{run_suffix}"
     anomaly_key = BASE_KEY + "-anomaly"
     status, _ = register(anomaly_id, anomaly_key)
     print(f"anomaly_register: HTTP {status}")
+    baseline_ok = True
     for i in range(5):
         status, body = signed_broadcast(anomaly_id, anomaly_key)
         print(f"anomaly_baseline_{i+1}: HTTP {status}")
         if status != 200:
             failures.append("anomaly_baseline")
+            baseline_ok = False
             break
         if i < 4:
             time.sleep(15)
 
     quarantine_seen = False
     quarantine_result = None
-    for i in range(1, 31):
-        status, body = signed_broadcast(anomaly_id, anomaly_key)
-        if status == 403 and "auto-quarantined" in body:
-            quarantine_seen = True
-            quarantine_result = (i, status, body[:300])
-            break
-        if status != 200:
-            quarantine_result = (i, status, body[:300])
-            break
+    if baseline_ok:
+        burst_results = burst_broadcasts(anomaly_id, anomaly_key, count=40, workers=20)
+        for index, (status, body) in enumerate(burst_results, start=1):
+            if status == 403 and "auto-quarantined" in body:
+                quarantine_seen = True
+                quarantine_result = (index, status, body[:300])
+                break
+        if quarantine_result is None:
+            for index, (status, body) in enumerate(burst_results, start=1):
+                if status != 200:
+                    quarantine_result = (index, status, body[:300])
+                    break
     print(f"anomaly_quarantine_result: {quarantine_result}")
     if not quarantine_seen:
         failures.append("anomaly_quarantine")
 
-    status, events_body = admin("GET", "/admin/security-events?limit=50")
+    status, events_body = admin("GET", "/admin/security-events?limit=100")
     event_found = False
     if status == 200:
         try:
